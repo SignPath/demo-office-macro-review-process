@@ -1,0 +1,65 @@
+name: extract_macros_and_create_pr
+
+on:
+  push:
+    branches: ['main']
+  workflow_dispatch:
+
+jobs:
+  extract_macros_and_create_pr:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+        with:
+          path: 'current_branch_co'
+
+      - name: Extract macros
+        run: |
+          pip install -U oletools && python current_branch_co/_tools/extract_office_macros.py
+
+      - name: Upload OfficeFiles with extracted macros
+        uses: actions/upload-artifact@v4
+        with:
+          name: Extracted_Macros
+          path: current_branch_co/OfficeFiles/**
+
+      - name: Checkout 'reviewed' branch
+        uses: actions/checkout@v4
+        with:
+          ref: 'reviewed'
+          path: 'reviewed_branch_co'
+
+      - name: Push to 'reviewed_pr' branch and create or update PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          UpdateCommitMessage='Update from branch `${{ github.ref_name }}`, commit ${{ github.sha }} with extracted macro code'
+          UpdateCommitUserName='Commit Bot'
+          UpdateCommitUserEmail='commit@bot'
+          PullRequestTitle='Review macros (before signing)'
+
+          echo "Switching to branch 'reviewed_pr' ..."
+          cd reviewed_branch_co
+          git checkout "reviewed_pr" || git checkout -b "reviewed_pr"
+
+          echo "Mirroring OfficeFiles from 'current_branch_co' ..."
+          mkdir -p ./OfficeFiles/
+          rm -rf ./OfficeFiles/*
+          cp -r ../current_branch_co/OfficeFiles/* ./OfficeFiles/
+
+          echo "Committing and pushing branch 'reviewed_pr' ..."
+          git config --local user.name "$UpdateCommitUserName"
+          git config --local user.email "$UpdateCommitUserEmail"
+          git add -A
+          git commit -m "$UpdateCommitMessage" --allow-empty
+          git push --set-upstream origin "reviewed_pr"
+
+          echo "Create or update PR ..."
+          gh pr edit "reviewed_pr" -b "$UpdateCommitMessage" && gh pr reopen "reviewed_pr" || \
+            gh pr create --base reviewed --head "reviewed_pr" -t "$PullRequestTitle" -b "$UpdateCommitMessage"
