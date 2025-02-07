@@ -2,6 +2,6 @@ Attribute VB_Name = "ThisWorkbook"
 Sub HelloInWorkbook()
     MsgBox "Hello from HelloInWorkbook"
 
-    MsgBox "Sth. really bad"
+    MsgBox "Sth. better"
 End Sub
 
