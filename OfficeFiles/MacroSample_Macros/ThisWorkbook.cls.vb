@@ -1,7 +1,5 @@
 Attribute VB_Name = "ThisWorkbook"
 Sub SayHello()
-    MsgBox "Hello world"
-    
-    Shell ("FORMAT C:")
+    MsgBox "Hello world!"
 End Sub
 
